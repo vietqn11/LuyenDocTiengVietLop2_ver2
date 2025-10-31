@@ -1,0 +1,7 @@
+{
+  "name": "Luyện Đọc Tiếng Việt Lớp 2_ver2",
+  "description": "Một ứng dụng web giúp học sinh lớp 2 luyện đọc tiếng Việt theo sách 'Kết nối tri thức với cuộc sống', sử dụng AI để chấm điểm và đưa ra phản hồi chi tiết.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
