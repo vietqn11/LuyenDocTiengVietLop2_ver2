@@ -16,7 +16,7 @@ export const generateTextToSpeech = async (text: string, userApiKey?: string): P
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text }] }],
+      contents: [{ parts: [{ text: `Đọc bài đọc sau đây với giọng một cô giáo người Việt Nam dịu dàng, truyền cảm: ${text}` }] }],
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
