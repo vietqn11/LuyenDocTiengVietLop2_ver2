@@ -23,7 +23,8 @@ const LessonSelectionScreen: React.FC<LessonSelectionScreenProps> = ({ user, onS
     const handleGetSuggestion = async () => {
         setIsLoadingSuggestion(true);
         setSuggestion('');
-        const result = await getQuickSuggestion(user.name, user.apiKey);
+        const lessonTitles = LESSONS.map(l => l.title);
+        const result = await getQuickSuggestion(user.name, lessonTitles, user.apiKey);
         setSuggestion(result);
         setIsLoadingSuggestion(false);
     }
@@ -78,7 +79,13 @@ const LessonSelectionScreen: React.FC<LessonSelectionScreenProps> = ({ user, onS
               <div className="flex items-center justify-between">
                   <div className="text-sm" style={{ color: 'var(--c-text-body)' }}>
                       {isLoadingSuggestion && <div className="flex items-center gap-2"><Spinner/> Cô đang nghĩ xem...</div>}
-                      {suggestion && <p className="font-semibold text-blue-800">{suggestion}</p>}
+                      {suggestion && (
+                        <p className="font-semibold text-blue-800">
+                          {suggestion.split(/\*\*(.*?)\*\*/g).map((part, i) =>
+                            i % 2 === 1 ? <strong key={i}>{part}</strong> : <span key={i}>{part}</span>
+                          )}
+                        </p>
+                      )}
                       {!suggestion && !isLoadingSuggestion && <p>Hôm nay đọc bài nào nhỉ?</p>}
                   </div>
                   <button onClick={handleGetSuggestion} disabled={isLoadingSuggestion} className="whitespace-nowrap font-bold text-blue-600 hover:text-blue-800 disabled:opacity-50 text-sm transition btn-bounce">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ReadingResult, Lesson, User, ReadingError } from '../types';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { generateTextToSpeech } from '../services/geminiService';
@@ -63,54 +63,37 @@ const ResultsScreen: React.FC<ResultsScreenProps> = ({ user, result, lesson, onT
       }
       acc[sentence].push(error);
       return acc;
-    // FIX: Explicitly type the initial value for the reduce accumulator to resolve 'unknown' type error.
     }, {} as Record<string, ReadingError[]>);
   }, [result.errors]);
+  
+  const handlePlayAudio = async (id: string, sentence: string) => {
+    const currentAudioState = audioCache[id];
 
-  const sentencesWithErrors = useMemo(() => Object.keys(groupedErrors), [groupedErrors]);
+    // Don't do anything if this specific audio is already loading
+    if (currentAudioState?.loading) return;
 
-  useEffect(() => {
-    const preloadAudio = async () => {
-      if (sentencesWithErrors.length > 0) {
-        const initialCache: Record<string, AudioCacheItem> = {};
-        sentencesWithErrors.forEach((_, index) => {
-          const id = `sent-group-${index}`;
-          initialCache[id] = { loading: true, data: null, error: false };
-        });
-        setAudioCache(initialCache);
+    setPlayingId(id); // Set as active to show spinner
 
-        const audioPromises = sentencesWithErrors.map(sentence => 
-          generateTextToSpeech(sentence, user.apiKey)
-        );
-        
-        const audioResults = await Promise.all(audioPromises);
-
-        setAudioCache(prevCache => {
-          const newCache = { ...prevCache };
-          audioResults.forEach((audioData, index) => {
-            const id = `sent-group-${index}`;
-            newCache[id] = { loading: false, data: audioData, error: !audioData };
-          });
-          return newCache;
-        });
-      }
-    };
-
-    preloadAudio();
-  }, [sentencesWithErrors, user.apiKey]);
-
-  const handlePlayAudio = async (id: string) => {
-    const audioState = audioCache[id];
-    if (isPlaying || !audioState || audioState.loading || !audioState.data) {
+    // If audio data is in cache, play it directly
+    if (currentAudioState?.data) {
+        await play(currentAudioState.data);
+        setPlayingId(null);
         return;
     }
-    
-    setPlayingId(id);
-    await play(audioState.data);
-    setPlayingId(null);
+
+    // Otherwise, fetch the audio data
+    setAudioCache(prev => ({ ...prev, [id]: { loading: true, data: null, error: false } }));
+    const audioData = await generateTextToSpeech(sentence, user.apiKey);
+
+    if (audioData) {
+        setAudioCache(prev => ({ ...prev, [id]: { loading: false, data: audioData, error: false } }));
+        await play(audioData);
+    } else {
+        setAudioCache(prev => ({ ...prev, [id]: { loading: false, data: null, error: true } }));
+    }
+
+    setPlayingId(null); // Unset after playing or error
   };
-  
-  const isLoadingAudio = Object.values(audioCache).some((item: AudioCacheItem) => item.loading);
 
   return (
     <div className="bg-white p-8 rounded-3xl w-full animate-fade-in relative overflow-hidden" style={{ boxShadow: 'var(--shadow-lg)'}}>
@@ -132,12 +115,6 @@ const ResultsScreen: React.FC<ResultsScreenProps> = ({ user, result, lesson, onT
       {result.errors.length > 0 && (
         <div>
           <h3 className="text-2xl font-bold mb-4" style={{ color: 'var(--c-text-header)' }}>Mình cùng sửa lỗi nhé</h3>
-          {isLoadingAudio && (
-            <div className="flex items-center gap-2 text-slate-600 mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg italic">
-              <Spinner />
-              Cô đang tải lại các câu đọc sai...
-            </div>
-          )}
           <ul className="space-y-4">
             {Object.entries(groupedErrors).map(([sentence, errorsInSentence], index) => {
               const id = `sent-group-${index}`;
@@ -156,11 +133,11 @@ const ResultsScreen: React.FC<ResultsScreenProps> = ({ user, result, lesson, onT
                         </span>
                         ) : (
                         <button 
-                            onClick={() => handlePlayAudio(id)} 
-                            disabled={isPlaying || !audioState || audioState.loading || !audioState.data}
+                            onClick={() => handlePlayAudio(id, sentence)} 
+                            disabled={isPlaying && playingId !== id} // Disable other buttons while one is playing
                             className="flex items-center gap-1.5 text-sm text-blue-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
                         >
-                            {playingId === id || audioState?.loading ? <Spinner size="sm" /> : <SpeakerIcon size={16}/>} Nghe lại câu
+                            {playingId === id ? <Spinner size="sm" /> : <SpeakerIcon size={16}/>} Nghe lại câu
                         </button>
                         )}
                     </div>

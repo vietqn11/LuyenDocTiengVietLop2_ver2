@@ -140,6 +140,19 @@ const ReadingScreen: React.FC<ReadingScreenProps> = ({ user, lesson, onFinish, o
       
       setTimeout(async () => {
         const finalTranscript = transcriptRef.current.trim();
+        const originalWordCount = lesson.text.split(/\s+/).filter(Boolean).length;
+        const studentWordCount = finalTranscript.split(/\s+/).filter(Boolean).length;
+
+        if (originalWordCount > 0 && studentWordCount < originalWordCount * 0.5) {
+            onFinish({
+                scores: { accuracy: 0, fluency: 0, pronunciation: 0, overall: 0 },
+                overallFeedback: "Con ơi, con mới đọc được một chút thôi à. Hãy cố gắng đọc hết bài để cô chấm điểm cho con nhé! Cố lên nào! 💪",
+                errors: []
+            });
+            setIsAnalyzing(false);
+            return;
+        }
+        
         if (finalTranscript) {
           let result = await analyzeReading(lesson.text, finalTranscript, user.apiKey);
           if (result) {

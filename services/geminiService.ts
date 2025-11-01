@@ -148,7 +148,7 @@ Bây giờ, cô hãy phân tích và cho con kết quả JSON nhé. Cô nhớ ch
 };
 
 
-export const getQuickSuggestion = async (name: string, userApiKey?: string): Promise<string> => {
+export const getQuickSuggestion = async (name: string, lessonTitles: string[], userApiKey?: string): Promise<string> => {
     const keyToUse = userApiKey || API_KEY;
     if (!keyToUse) {
       console.error("API Key is not available for suggestion.");
@@ -156,11 +156,16 @@ export const getQuickSuggestion = async (name: string, userApiKey?: string): Pro
     }
     const ai = new GoogleGenAI({ apiKey: keyToUse });
     try {
+        const prompt = `Bạn là một cô giáo dạy tiếng Việt lớp 2, thân thiện. Học sinh tên là ${name} cần gợi ý đọc bài. Hãy chọn MỘT bài từ danh sách sau và viết một câu gợi ý thật đáng yêu, bao gồm tên bài đọc được in đậm bằng markdown (ví dụ: **Tên bài**). Ví dụ: "Chào ${name}! Hôm nay mình đọc bài **Tên bài** nhé, nghe vui lắm đó! 😺". Chỉ trả về câu gợi ý đó thôi. Danh sách: ${lessonTitles.join(', ')}`;
+
         const response = await ai.models.generateContent({
-            model: 'gemini-flash-lite-latest',
-            contents: `Một học sinh tên là ${name} hỏi "Em nên đọc bài nào hôm nay?". Gợi ý một cách nhanh chóng và thân thiện một trong các bài sau: Mùa hè, Em đi học, Chú mèo con, Tết đến rồi, Cánh đồng quê em.`,
+            model: 'gemini-2.5-flash',
+            contents: prompt,
         });
-        return response.text;
+        
+        const responseText = response.text.trim();
+        // Remove potential wrapping quotes from the model's response
+        return responseText.replace(/^"|"$/g, '');
     } catch (error) {
         console.error("Error getting quick suggestion:", error);
         return "Gợi ý của AI đang gặp lỗi. Con hãy tự chọn một bài đọc thú vị nhé!";
